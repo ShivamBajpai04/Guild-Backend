@@ -32,10 +32,17 @@ const GuildSchema = new mongoose.Schema({
 const UserSchema = new db.Schema({
 	username: { type: String, required: true },
 	email: { type: String, required: true },
-	password: String,
+	password: { type: String, required: true },
+});
+
+const AdminSchema = new db.Schema({
+	username: { type: String, required: true },
+	email: { type: String, required: true },
+	password: { type: String, required: true },
 });
 
 const User = db.model("users", UserSchema);
 const Guild = db.model("guilds", GuildSchema);
+const Admin = db.model("admin", AdminSchema);
 
-export { User, Guild };
+export { User, Guild, Admin };

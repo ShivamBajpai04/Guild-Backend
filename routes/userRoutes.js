@@ -1,10 +1,10 @@
 import { Router } from "express";
 const router = Router();
 import jwt from "jsonwebtoken";
-import { User } from "../db/index.js";
+import { User, Guild } from "../db/index.js";
 import userMiddleware from "../middleware/userMiddleware.js";
 import dotenv from "dotenv";
-import { createTodo, userName, passWord } from "../types.js";
+import { createquest, userName, passWord } from "../types.js";
 import bcrypt from "bcrypt";
 
 dotenv.config();
@@ -13,27 +13,30 @@ router.post("/signup", async (req, res) => {
 	// Implement user signup logic
 	const username = req.body.username;
 	const password = req.body.password;
-	
+	const email = req.body.email;
+
 	const validUsername = userName.safeParse(username);
 	const validpassword = passWord.safeParse(password);
-	
+
 	if (!validUsername.success || !validpassword.success) {
 		res.json({
 			msg: "invalid username or password",
 		});
 		return;
 	}
-	
+
 	const hash = await bcrypt.hash(password, 10);
-	
+
 	const response = await User.findOne({
 		username,
+		email,
 		password,
 	});
 	if (!response) {
 		await User.create({
 			username,
-			password:hash,
+			email,
+			password: hash,
 		});
 
 		res.status(200).json({
@@ -49,12 +52,12 @@ router.post("/signup", async (req, res) => {
 router.post("/signin", async (req, res) => {
 	const username = req.body.username;
 	const password = req.body.password;
-
+	const email = req.body.email;
 	const response = await User.findOne({
 		username,
 	});
 
-	const isValid = bcrypt.compare(password,response.password)
+	const isValid = bcrypt.compare(password, response.password);
 
 	if (isValid) {
 		const token = jwt.sign(username, process.env.JWT_SECRET);
@@ -68,11 +71,11 @@ router.post("/signin", async (req, res) => {
 	}
 });
 
-router.post("/todo", userMiddleware, async (req, res) => {
+router.post("/addQuest", userMiddleware, async (req, res) => {
 	const username = req.username;
 	const title = req.body.title;
 	const description = req.body.description;
-	const result = createTodo.safeParse({
+	const result = createquest.safeParse({
 		title,
 		description,
 	});
@@ -82,15 +85,15 @@ router.post("/todo", userMiddleware, async (req, res) => {
 		});
 		return;
 	}
-	//Add todo to DB
+	//Add quest to DB
 	try {
-		const addedTodos = await User.updateOne(
+		const addedquests = await User.updateOne(
 			{
 				username,
 			},
 			{
 				$push: {
-					todos: {
+					quests: {
 						title: title,
 						description: description,
 					},
@@ -98,89 +101,105 @@ router.post("/todo", userMiddleware, async (req, res) => {
 			}
 		);
 		res.status(200).json({
-			msg: "Todo added",
-			todos: addedTodos.todos,
+			msg: "quest added",
+			quests: addedquests.quests,
 		});
 	} catch (e) {
 		res.json({
-			msg: "Could not add todo",
+			msg: "Could not add quest",
 		});
 	}
 });
 
-router.get("/todos", userMiddleware, async (req, res) => {
+router.get("/myQuests", userMiddleware, async (req, res) => {
 	const user = await User.findOne({
 		username: req.username,
 	});
-	const todos = user.todos;
-	if (todos.length) {
+	const quests = user.quests;
+	if (quests.length) {
 		res.status(200).json({
-			todos,
+			quests,
 		});
 	} else {
 		res.status(403).json({
-			msg: "No Todos Added",
+			msg: "No quests Added",
 		});
 	}
 });
 
-router.patch("/completed/:id", async (req, res) => {
-	try {
-		// Find the user by username and the specific todo by ID
-		// const username = req.username;
-		const todoId = req.params.id;
-		const result = await User.updateOne(
-			{ "todos._id": todoId },
-			{
-				$set: { "todos.$.completed": true },
-			}
-		);
-		// console.log(result);
-		if (result.modifiedCount > 0) {
-			res.status(200).json({ message: "Todo marked as completed." });
-		} else {
-			res.status(404).json({ message: "Todo not found or already completed." });
-		}
-	} catch (error) {
-		console.error("Error updating todo:", error);
-		res.status(500).json({ message: "Internal server error." });
-	}
+router.get("/guilds", async (req, res) => {
+	// Implement listing all courses logic
+	const guilds = await Guild.find({});
+	res.status(200).json({
+		guilds: guilds,
+	});
 });
 
-router.patch("/update/:id", async (req, res) => {
-	try {
-		// Find the user by username and the specific todo by ID
-		// const username = req.username;
-		const title = req.body.title;
-		const description = req.body.description;
-		const todoId = req.params.id;
-		let result;
-		if (title) {
-			result = await User.updateOne(
-				{ "todos._id": todoId },
-				{
-					$set: { "todos.$.title": title },
-				}
-			);
-		}
-		if (description) {
-			result = await User.updateOne(
-				{ "todos._id": todoId },
-				{
-					$set: { "todos.$.description": description },
-				}
-			);
-		}
-		console.log(result);
-		if (result.modifiedCount > 0) {
-			res.status(200).json({ message: "Todo Updated" });
-		} else {
-			res.status(404).json({ message: "Todo not found" });
-		}
-	} catch (error) {
-		console.error("Error updating todo:", error);
-		res.status(500).json({ message: "Internal server error." });
-	}
+router.get("/guilds:id", async (req, res) => {
+	// Implement listing all courses logic
+	const guilds = await Guild.find({ _id: req.params.id });
+	res.status(200).json({
+		guilds: guilds,
+	});
 });
+
+// router.patch("/completed/:id", async (req, res) => {
+// 	try {
+// 		// Find the user by username and the specific quest by ID
+// 		// const username = req.username;
+// 		const questId = req.params.id;
+// 		const result = await User.updateOne(
+// 			{ "quests._id": questId },
+// 			{
+// 				$set: { "quests.$.completed": true },
+// 			}
+// 		);
+// 		// console.log(result);
+// 		if (result.modifiedCount > 0) {
+// 			res.status(200).json({ message: "quest marked as completed." });
+// 		} else {
+// 			res.status(404).json({ message: "quest not found or already completed." });
+// 		}
+// 	} catch (error) {
+// 		console.error("Error updating quest:", error);
+// 		res.status(500).json({ message: "Internal server error." });
+// 	}
+// });
+
+// router.patch("/update/:id", async (req, res) => {
+// 	try {
+// 		// Find the user by username and the specific quest by ID
+// 		// const username = req.username;
+// 		const title = req.body.title;
+// 		const description = req.body.description;
+// 		const questId = req.params.id;
+// 		let result;
+// 		if (title) {
+// 			result = await User.updateOne(
+// 				{ "quests._id": questId },
+// 				{
+// 					$set: { "quests.$.title": title },
+// 				}
+// 			);
+// 		}
+// 		if (description) {
+// 			result = await User.updateOne(
+// 				{ "quests._id": questId },
+// 				{
+// 					$set: { "quests.$.description": description },
+// 				}
+// 			);
+// 		}
+// 		console.log(result);
+// 		if (result.modifiedCount > 0) {
+// 			res.status(200).json({ message: "quest Updated" });
+// 		} else {
+// 			res.status(404).json({ message: "quest not found" });
+// 		}
+// 	} catch (error) {
+// 		console.error("Error updating quest:", error);
+// 		res.status(500).json({ message: "Internal server error." });
+// 	}
+// });
 
 export default router;

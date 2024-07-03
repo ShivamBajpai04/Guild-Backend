@@ -1,15 +1,20 @@
 import { z } from "zod";
 
-const createTodo = z.object({
+const createquest = z.object({
 	title: z.string(),
 	description: z.string(),
 });
 
-const updateTodo = z.object({
+const createguild = z.object({
+	guildName: z.string(),
+	description: z.string(),
+});
+
+const updatequest = z.object({
 	id: z.string(),
 });
 
 const userName = z.string().min(8);
 const passWord = z.string().min(8);
 
-export { createTodo, updateTodo, userName, passWord };
+export { createguild,createquest, updatequest, userName, passWord };
